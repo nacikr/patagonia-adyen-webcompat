@@ -74,7 +74,22 @@ itself, which is why blocking `adyen.js` removes all of them at once.
 | --- | --- | --- | --- |
 | No blocking | loaded | loaded | 6 of 6 (card, Afterpay, Google Pay, Klarna, PayPal, Apple Pay) |
 | Experiment 1: block `checkoutshopper` path | blocked | not requested | 2 of 6 (PayPal, Apple Pay) |
-| Experiment 2: block fingerprinting only | loaded | blocked | 6 of 6, card fields render, Console clean |
+| Experiment 2: block fingerprinting only | loaded | blocked | 6 of 6, card fields render |
+
+**Correction to Experiment 2.** My first check of the Console was filtered to
+`adyen` and looked clean. Re-running the experiment with my own extension
+([Breakage Inspector](https://github.com/nacikr/breakage-inspector)) showed one
+uncaught error once `df.js` is blocked:
+
+```
+Uncaught ReferenceError: dfDo is not defined
+    at https://www.patagonia.com/checkout/?stage=payment:3304:9
+```
+
+An inline script on the checkout page calls `dfDo`, which `df.js` normally
+defines (most likely Adyen's legacy device-fingerprint helper). The payment
+methods still render, so there is no visible breakage, but the same
+unguarded-global pattern as `AdyenCheckout` appears a second time.
 
 Screenshots: [`screenshots/`](screenshots/)
 
