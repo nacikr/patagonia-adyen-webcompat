@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Repro: payment methods vanish when the payment SDK is blocked</title>
+  <style>
+    body { font: 16px/1.5 system-ui, sans-serif; max-width: 34rem; margin: 2rem auto; padding: 0 1rem; }
+    .method { display: block; padding: .5rem 0; }
+    .card-fields input { display: block; width: 100%; margin: .25rem 0; padding: .4rem; box-sizing: border-box; }
+    .note { background: #f4f4f4; padding: .75rem; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>How would you like to pay?</h1>
+  <p class="note">
+    Normal: card, Afterpay, Google Pay and Klarna appear.<br>
+    Broken: open <a href="?block=1">?block=1</a>, or block <code>payment-sdk-standin.js</code>
+    in DevTools (Network → right-click → Block request URL) and reload.
+    Only PayPal and Apple Pay remain, and the Console shows
+    <code>ReferenceError: AdyenCheckout is not defined</code>.
+  </p>
+
+  <!-- Rendered by the SDK (disappears when the SDK is blocked) -->
+  <div id="card-container"></div>
+
+  <!-- Rendered without the SDK on the real site (stay visible) -->
+  <label class="method"><input type="radio" name="pm"> PayPal</label>
+  <label class="method"><input type="radio" name="pm"> Apple Pay</label>
+
+  <script>
+    // ?block=1 simulates a content blocker by not loading the SDK.
+    // document.write keeps the classic synchronous <script> loading the real page uses.
+    if (!new URLSearchParams(location.search).has('block')) {
+      document.write('<script src="payment-sdk-standin.js"><\/script>');
+    }
+  </script>
+  <script>
+    // Mirrors the site's initializeCheckout() (renderGenericComponent.js:371).
+    async function initializeCheckout() {
+      const checkout = await AdyenCheckout({ locale: 'en-US', environment: 'live' });
+      checkout.create('card').mount('#card-container');
+    }
+    // No catch: when the SDK is missing this rejects with a ReferenceError
+    // and the user sees no message at all.
+    initializeCheckout();
+  </script>
+</body>
+</html>
